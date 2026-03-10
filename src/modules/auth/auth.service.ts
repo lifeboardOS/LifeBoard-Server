@@ -16,10 +16,14 @@ export class AuthService {
     // register(signUp) method for User
     async registerUser(registerUserDto: RegisterDto) {
 
-        const existingUser = await this.userService.findByEmail(registerUserDto.email);
+        const existingUserByEmail = await this.userService.findByEmail(registerUserDto.email);
+        if (existingUserByEmail) {
+            throw new ConflictException('Email already exists');
+        }
 
-        if (existingUser) {
-            throw new ConflictException('User already exists');
+        const existingUserByUsername = await this.userService.findByUsername(registerUserDto.username);
+        if(existingUserByUsername) {
+            throw new ConflictException('Username already exists');
         }
 
         const saltRounds = 10;
@@ -33,9 +37,9 @@ export class AuthService {
         const payload = { 
             sub: user._id,
             email: user.email,
+            username: user.schema,
         }
         const token = await this.jwtService.signAsync(payload);
-        console.log(token);
 
         return {access_token: token};
     }
