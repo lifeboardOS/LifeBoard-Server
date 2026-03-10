@@ -13,7 +13,7 @@ export class UserService {
     }
 
     async findByUsername(username: string): Promise<UserDocument | null>{
-        return this.userModel.findOne({ username: username.toLowerCase() }).exec();
+        return this.userModel.findOne({ username: username.toLowerCase() }).select('+password').exec();
     }
     
     async createUser(registerUserDto: RegisterDto) {

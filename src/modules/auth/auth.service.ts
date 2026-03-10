@@ -37,7 +37,7 @@ export class AuthService {
         const payload = { 
             sub: user._id,
             email: user.email,
-            username: user.schema,
+            username: user.username,
         }
         const token = await this.jwtService.signAsync(payload);
 
@@ -47,10 +47,19 @@ export class AuthService {
     // login method for User
     async login(loginDto: LoginDto){
 
-        const user = await this.userService.findByEmail(loginDto.email);
+        const { identifier, password } = loginDto;
+        const normalizedIdentifier = identifier.toLowerCase().trim();
+
+        let user;
+
+        if(normalizedIdentifier.includes('@')){
+            user = await this.userService.findByEmail(normalizedIdentifier);
+        }else{
+            user = await this.userService.findByUsername(normalizedIdentifier);
+        }
 
         if(!user){
-            throw new UnauthorizedException('Invalid email')
+            throw new UnauthorizedException('Invalid credentials');
         }
 
         const isPasswordValid = await bcrypt.compare(
@@ -59,12 +68,12 @@ export class AuthService {
         );
 
         if(!isPasswordValid){
-            throw new UnauthorizedException('Invalid password');
+            throw new UnauthorizedException('Invalid credentials');
         }
 
         const payload = {
             sub: user._id,
-            email: user.email,
+            username: user.username,
         };
 
         const token = await this.jwtService.signAsync(payload);
