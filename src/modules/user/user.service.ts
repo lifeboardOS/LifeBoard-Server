@@ -20,9 +20,9 @@ export class UserService {
 
         try{
             return await this.userModel.create({
-                fullName: registerUserDto.fullname,
+                fullName: registerUserDto.fullname.trim(),
                 username: registerUserDto.username.trim().toLowerCase(),
-                email: registerUserDto.email.toLowerCase(),
+                email: registerUserDto.email.trim().toLowerCase(),
                 password: registerUserDto.password,
             });
         } catch (err: unknown) {
