@@ -7,6 +7,17 @@ import { User, UserDocument } from './schemas/user.schema';
 @Injectable()
 export class UserService {
     constructor(@InjectModel(User.name) private userModel: Model<UserDocument>) {}
+
+    async findForAuth(identifier: string): Promise<UserDocument | null>{
+        return this.userModel.findOne({
+            $or: [
+                { email: identifier.toLowerCase() },
+                { username: identifier.toLowerCase() },
+            ],
+        })
+        .select('+password')
+        .exec();
+    }
     
     async findByEmail(email: string): Promise<UserDocument | null> {
         return this.userModel.findOne({ email: email.toLowerCase() }).select('+password').exec();

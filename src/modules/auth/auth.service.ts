@@ -50,13 +50,7 @@ export class AuthService {
         const { identifier, password } = loginDto;
         const normalizedIdentifier = identifier.toLowerCase().trim();
 
-        let user;
-
-        if(normalizedIdentifier.includes('@')){
-            user = await this.userService.findByEmail(normalizedIdentifier);
-        }else{
-            user = await this.userService.findByUsername(normalizedIdentifier);
-        }
+        const user = await this.userService.findForAuth(normalizedIdentifier);
 
         if(!user){
             throw new UnauthorizedException('Invalid credentials');
