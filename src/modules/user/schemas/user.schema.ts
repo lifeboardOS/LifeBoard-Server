@@ -16,6 +16,9 @@ export class User {
 
   @Prop({ required: true, select: false })
   password: string;
+
+  @Prop({ default: false })
+  isEmailVerified: boolean;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

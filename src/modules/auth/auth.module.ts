@@ -3,10 +3,17 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { UserModule } from 'src/modules/user/user.module';
 import { JwtModule } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { MongooseModule } from '@nestjs/mongoose';
+
+import { Otp, OtpSchema } from './schemas/otp.schema';
+import { OtpService } from './services/otp.service';
+import { EmailService } from './services/email.service';
+
 
 @Module({
   imports: [
+    ConfigModule,
     UserModule,
     JwtModule.registerAsync({
       inject: [ConfigService],
@@ -15,8 +22,15 @@ import { ConfigService } from '@nestjs/config';
         signOptions: { expiresIn: '15m' },
       }),
     }),
+    MongooseModule.forFeature([
+      { name: Otp.name, schema: OtpSchema }
+    ]),
   ],
   controllers: [AuthController],
-  providers: [AuthService]
+  providers: [
+    AuthService,
+    OtpService,
+    EmailService
+  ]
 })
 export class AuthModule {}
