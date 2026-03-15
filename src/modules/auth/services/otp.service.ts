@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { Otp, otpDocument } from "../schemas/otp.schema";
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class OtpService{
@@ -19,12 +20,15 @@ export class OtpService{
 
         const otp = this.generateOtp();
 
+        const saltRounds = 10;
+        const hashedOtp = await bcrypt.hash(otp, saltRounds);
+
         const expiresAt = new Date();
         expiresAt.setMinutes(expiresAt.getMinutes() + 10);
 
         await this.otpModel.create({
             email,
-            otp,
+            otp: hashedOtp,
             expiresAt
         });
 

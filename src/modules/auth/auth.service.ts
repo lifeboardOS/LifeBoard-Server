@@ -60,17 +60,20 @@ export class AuthService {
         
         const { email, otp } = verifyEmailDto;
 
-        const otpRecord = await this.otpModel.findOne({
-            email,
-            otp,
-        });
+        const otpRecord = await this.otpModel.findOne({ email });
 
         if (!otpRecord) {
             throw new BadRequestException('Invalid OTP');
         }
 
-        if (otpRecord.expiresAt < new Date()) {
+        if(otpRecord.expiresAt < new Date()){
             throw new BadRequestException('OTP expired');
+        }
+
+        const isValidOtp = await bcrypt.compare(otp, otpRecord.otp);
+
+        if(!isValidOtp){
+            throw new BadRequestException('Invalid OTP');
         }
 
         const user = await this.userService.findByEmail(email);
