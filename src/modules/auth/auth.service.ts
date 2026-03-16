@@ -85,6 +85,8 @@ export class AuthService {
         user.isEmailVerified = true;
         await user.save();
 
+        await this.otpModel.deleteMany({ email });
+
         const payload = {
             sub: user._id,
             email: user.email,
