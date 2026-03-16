@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { BadGatewayException, Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { Otp, otpDocument } from "../schemas/otp.schema";
@@ -17,6 +17,18 @@ export class OtpService{
     }
 
     async createOtp(email: string) {
+
+        const lastOtp = await this.otpModel
+        .findOne({ email })
+        .sort({ createdAt: -1 });
+
+        if(lastOtp){
+            const diff = Date.now() - lastOtp.createdAt.getTime();
+
+            if(diff < 60000){
+                throw new BadGatewayException('Please wait before requesting another OTP');
+            }
+        }
 
         // delet the existing OTP before creating the new one.
         await this.otpModel.deleteMany({ email });
