@@ -67,6 +67,10 @@ export class AuthService {
             throw new BadRequestException('Invalid OTP');
         }
 
+        if(otpRecord.attempts >= 5){
+            throw new BadRequestException('Too many OTP attempts. Request a new OTP');
+        }
+
         if(otpRecord.expiresAt < new Date()){
             throw new BadRequestException('OTP expired');
         }
@@ -74,6 +78,10 @@ export class AuthService {
         const isValidOtp = await bcrypt.compare(otp, otpRecord.otp);
 
         if(!isValidOtp){
+
+            otpRecord.attempts += 1;
+            await otpRecord.save();
+
             throw new BadRequestException('Invalid OTP');
         }
 
@@ -86,7 +94,7 @@ export class AuthService {
         user.isEmailVerified = true;
         await user.save();
 
-        await this.otpModel.deleteMany({ email });
+        await otpRecord.deleteOne();
 
         const payload = {
             sub: user._id,

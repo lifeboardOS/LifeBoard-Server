@@ -18,6 +18,9 @@ export class Otp {
     })
     expiresAt: Date;
 
+    @Prop({ default: 0 })
+    attempts: number;
+
     createdAt: Date;
     updatedAt: Date;
 }
