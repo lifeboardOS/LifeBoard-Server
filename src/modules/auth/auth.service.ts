@@ -12,6 +12,7 @@ import { OtpService } from './services/otp.service';
 import { EmailService } from './services/email.service';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { Otp, otpDocument } from './schemas/otp.schema';
+import { ResendOtpDto } from './dto/resend-otp.dto';
 
 @Injectable()
 export class AuthService {
@@ -98,6 +99,28 @@ export class AuthService {
         return {
             message: 'Email verified successfully',
             access_token: token,
+        };
+    }
+
+    // Resend OTP
+    async resendOtp(resendOtpDto: ResendOtpDto){
+
+        const user = await this.userService.findByEmail(resendOtpDto.email);
+
+        if(!user){
+            throw new BadRequestException('User not found');
+        }
+
+        if(user.isEmailVerified){
+            throw new BadRequestException('Email already verified');
+        }
+
+        const otp = await this.otpService.createOtp(resendOtpDto.email);
+
+        await this.emailService.sendOtp(resendOtpDto.email, otp);
+
+        return {
+            message: 'OTP resent successfully'
         };
     }
 
