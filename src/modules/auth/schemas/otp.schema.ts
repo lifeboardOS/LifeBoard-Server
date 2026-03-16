@@ -12,7 +12,10 @@ export class Otp {
     @Prop({ required: true })
     otp: string;
 
-    @Prop({ required: true })
+    @Prop({ 
+        required: true,
+        index: { expires: 0 },
+    })
     expiresAt: Date;
 
 }

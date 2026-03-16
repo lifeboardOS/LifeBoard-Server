@@ -18,6 +18,9 @@ export class OtpService{
 
     async createOtp(email: string) {
 
+        // delet the existing OTP before creating the new one.
+        await this.otpModel.deleteMany({ email });
+
         const otp = this.generateOtp();
 
         const saltRounds = 10;
