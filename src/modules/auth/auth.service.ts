@@ -13,6 +13,7 @@ import { EmailService } from './services/email.service';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { Otp, otpDocument } from './schemas/otp.schema';
 import { ResendOtpDto } from './dto/resend-otp.dto';
+import { LoginAttempt, LoginAttemptDocument } from './schemas/login-attempt.schema';
 
 @Injectable()
 export class AuthService {
@@ -24,6 +25,9 @@ export class AuthService {
 
         @InjectModel(Otp.name)
         private readonly otpModel: Model<otpDocument>,
+
+        @InjectModel(LoginAttempt.name)
+        private readonly loginAttemptModel: Model<LoginAttemptDocument>
     ){}
 
     // register(signUp) method for User
@@ -148,14 +152,28 @@ export class AuthService {
             throw new UnauthorizedException('Please verify your email before logging in');
         }
 
+        const attempts = await this.loginAttemptModel.countDocuments({ identifier });
+
+        if(attempts >= 5){
+            throw new UnauthorizedException('Too many login attempts. Try again later.')
+        }
+
         const isPasswordValid = await bcrypt.compare(
             loginDto.password,
             user.password,
         );
 
         if(!isPasswordValid){
+
+            await this.loginAttemptModel.create({
+                identifier,
+                expiresAt: new Date(Date.now() + 60000)
+            });
+
             throw new UnauthorizedException('Invalid credentials');
         }
+
+        await this.loginAttemptModel.deleteMany({ identifier });
 
         const payload = {
             sub: user._id,

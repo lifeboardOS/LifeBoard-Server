@@ -9,6 +9,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { Otp, OtpSchema } from './schemas/otp.schema';
 import { OtpService } from './services/otp.service';
 import { EmailService } from './services/email.service';
+import { LoginAttempt, LoginAttemptSchema } from './schemas/login-attempt.schema';
 
 
 @Module({
@@ -23,7 +24,8 @@ import { EmailService } from './services/email.service';
       }),
     }),
     MongooseModule.forFeature([
-      { name: Otp.name, schema: OtpSchema }
+      { name: Otp.name, schema: OtpSchema },
+      { name: LoginAttempt.name, schema: LoginAttemptSchema }
     ]),
   ],
   controllers: [AuthController],
