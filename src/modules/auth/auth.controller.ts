@@ -26,7 +26,12 @@ export class AuthController {
 
     @Post('resend-otp')
     async resendOtp(@Body() resendOtpDto: ResendOtpDto){
-        return this.authService.resendOtp(resendOtpDto)
+        return this.authService.resendOtp(resendOtpDto);
+    }
+
+    @Post('refresh')
+    async refresh(@Body('refreshToken') refreshToken: string){
+        return this.authService.refreshToken(refreshToken);
     }
     
 }

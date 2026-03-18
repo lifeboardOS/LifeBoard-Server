@@ -178,10 +178,50 @@ export class AuthService {
         const payload = {
             sub: user._id,
             username: user.username,
+            email: user.email,
         };
 
-        const token = await this.jwtService.signAsync(payload);
+        const accessToken = await this.jwtService.signAsync(payload, {
+            secret: process.env.JWT_ACCESS_SECRET,
+            expiresIn: '15m',
+        });
 
-        return { access_token: token };
+        const refreshToken = await this.jwtService.signAsync(payload, {
+            secret: process.env.JWT_REFRESH_SECRET,
+            expiresIn: '30d',
+        });
+
+        return {
+            access_token: accessToken,
+            refresh_token: refreshToken,
+        };
+    }
+
+    // Refresh token
+    async refreshToken(refreshToken: string){
+        try{
+            const payload = await this.jwtService.verifyAsync(refreshToken, {
+                secret: process.env.JWT_REFRESH_SECRET,
+            });
+
+            const newAccessToken = await this.jwtService.signAsync(
+                {
+                    sub: payload.sub,
+                    email: payload.email,
+                    username: payload.username,
+                },
+                {
+                    secret: process.env.JWT_ACCESS_SECRET,
+                    expiresIn: '15m',
+                },
+            );
+
+            return {
+                access_toekn: newAccessToken,
+            };
+        }
+        catch (error) {
+            throw new UnauthorizedException('Invalid refresh token');
+        }
     }
 }
