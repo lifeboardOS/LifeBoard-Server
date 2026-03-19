@@ -191,6 +191,11 @@ export class AuthService {
             expiresIn: '30d',
         });
 
+        const hasehedRefreshToken = await bcrypt.hash(refreshToken, 10);
+
+        user.refreshToken = hasehedRefreshToken;
+        await user.save();
+
         return {
             access_token: accessToken,
             refresh_token: refreshToken,
@@ -200,10 +205,27 @@ export class AuthService {
     // Refresh token
     async refreshToken(refreshToken: string){
         try{
+
+            // verify token
             const payload = await this.jwtService.verifyAsync(refreshToken, {
                 secret: process.env.JWT_REFRESH_SECRET,
             });
 
+            // find user
+            const user = await this.userService.findById(payload.sub);
+
+            if(!user || !user.refreshToken){
+                throw new UnauthorizedException('Access denied');
+            }
+
+            // compare hashed token
+            const isMatch = await bcrypt.compare(refreshToken, user.refreshToken);
+
+            if(!isMatch){
+                throw new UnauthorizedException('Invalid refresh token');
+            }
+
+            // Generate new access token
             const newAccessToken = await this.jwtService.signAsync(
                 {
                     sub: payload.sub,

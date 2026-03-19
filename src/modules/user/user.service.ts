@@ -26,6 +26,10 @@ export class UserService {
     async findByUsername(username: string): Promise<UserDocument | null>{
         return this.userModel.findOne({ username: username.toLowerCase() }).select('+password').exec();
     }
+
+    async findById(id: string){
+        return this.userModel.findById(id).select('+refreshToken');
+    }
     
     async createUser(registerUserDto: RegisterDto) {
 
