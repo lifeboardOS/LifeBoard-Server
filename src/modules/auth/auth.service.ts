@@ -218,6 +218,10 @@ export class AuthService {
                 throw new UnauthorizedException('Access denied');
             }
 
+            if(!user.isEmailVerified){
+                throw new UnauthorizedException('Email not verified');
+            }
+
             // compare hashed token
             const isMatch = await bcrypt.compare(refreshToken, user.refreshToken);
 
