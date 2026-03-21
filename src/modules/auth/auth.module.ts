@@ -10,6 +10,7 @@ import { Otp, OtpSchema } from './schemas/otp.schema';
 import { OtpService } from './services/otp.service';
 import { EmailService } from './services/email.service';
 import { LoginAttempt, LoginAttemptSchema } from './schemas/login-attempt.schema';
+import { JwtStrategy } from './strategies/jwt.strategy';
 
 
 @Module({
@@ -32,7 +33,8 @@ import { LoginAttempt, LoginAttemptSchema } from './schemas/login-attempt.schema
   providers: [
     AuthService,
     OtpService,
-    EmailService
+    EmailService,
+    JwtStrategy,
   ]
 })
 export class AuthModule {}
