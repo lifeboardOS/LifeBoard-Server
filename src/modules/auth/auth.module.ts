@@ -11,6 +11,7 @@ import { OtpService } from './services/otp.service';
 import { EmailService } from './services/email.service';
 import { LoginAttempt, LoginAttemptSchema } from './schemas/login-attempt.schema';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { RolesGuard } from './guards/roles.guard';
 
 
 @Module({
@@ -35,6 +36,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
     OtpService,
     EmailService,
     JwtStrategy,
+    RolesGuard,
   ]
 })
 export class AuthModule {}

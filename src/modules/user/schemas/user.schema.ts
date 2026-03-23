@@ -17,6 +17,9 @@ export class User {
   @Prop({ required: true, select: false })
   password: string;
 
+  @Prop({ enum: ['user', 'admin'], default: 'user' })
+  role: string;
+
   @Prop({ default: false })
   isEmailVerified: boolean;
 
