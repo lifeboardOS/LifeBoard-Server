@@ -1,4 +1,4 @@
-import { IsString, IsEmail, MinLength, MaxLength, Matches, IsNotEmpty, ValidateIf } from 'class-validator';
+import { IsString, IsEmail, MinLength, MaxLength, Matches, IsNotEmpty, IsDateString } from 'class-validator';
 
 export class RegisterDto {
     @IsString({ message: 'fullname must be a string' })
@@ -28,4 +28,8 @@ export class RegisterDto {
     })
     @IsNotEmpty({ message: 'password is required' })
     password: string;
+
+    @IsDateString({}, { message: 'dateOfBirth must be a valid date' })
+    @IsNotEmpty({ message: 'dateOfBirth is required' })
+    dateOfBirth: string;
 }
