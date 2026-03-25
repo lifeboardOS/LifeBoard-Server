@@ -31,5 +31,5 @@ export class RegisterDto {
 
     @IsDateString({}, { message: 'dateOfBirth must be a valid date' })
     @IsNotEmpty({ message: 'dateOfBirth is required' })
-    dateOfBirth: string;
+    dateOfBirth: Date;
 }

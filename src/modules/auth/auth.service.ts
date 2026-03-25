@@ -30,6 +30,45 @@ export class AuthService {
         private readonly loginAttemptModel: Model<LoginAttemptDocument>
     ){}
 
+    // Google OAuth
+    async googleLogin(req) {
+
+        if(!req.body){
+            throw new UnauthorizedException();
+        }
+
+        const { email, fullname } = req.user;
+
+        let user = await this.userService.findByEmail(email);
+
+        if(!user){
+            user = await this.userService.createUser({
+                email: req.user.email,
+                fullname: req.user.fullname,
+                username: req.user.email.spilt('@')[0],
+                password: "google-oauth",
+                dateOfBirth: new Date(),
+            });
+
+            user.isEmailVerified = true;
+            user.isProfileCompleted = false;
+            await user.save();
+        }
+
+        const payload = {
+            sub: user._id,
+            email: user.email,
+            username: user.username,
+        };
+
+        const accessToken = await this.jwtService.signAsync(payload);
+
+        return {
+            access_token: accessToken,
+        };
+
+    }
+
     // register(signUp) method for User
     async registerUser(registerUserDto: RegisterDto) {
 

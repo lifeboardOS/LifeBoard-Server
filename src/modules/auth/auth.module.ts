@@ -12,6 +12,7 @@ import { EmailService } from './services/email.service';
 import { LoginAttempt, LoginAttemptSchema } from './schemas/login-attempt.schema';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { RolesGuard } from './guards/roles.guard';
+import { GoogleStrategy } from './strategies/google.strategy';
 
 
 @Module({
@@ -37,6 +38,7 @@ import { RolesGuard } from './guards/roles.guard';
     EmailService,
     JwtStrategy,
     RolesGuard,
+    GoogleStrategy
   ]
 })
 export class AuthModule {}
