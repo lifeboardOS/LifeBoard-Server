@@ -7,7 +7,7 @@ export type UserDocument = HydratedDocument<User>;
 export class User {
   @Prop({ required: true })
   fullName: string;
-  
+
   @Prop({ required: true, unique: true, index: true })
   email: string;
 
@@ -20,8 +20,8 @@ export class User {
   @Prop({ enum: ['user', 'admin'], default: 'user' })
   role: string;
 
-  @Prop({ required: true })
-  dateOfBirth: Date;
+  @Prop({ required: false })
+  dateOfBirth?: Date;
 
   @Prop({ default: false })
   isEmailVerified: boolean;
