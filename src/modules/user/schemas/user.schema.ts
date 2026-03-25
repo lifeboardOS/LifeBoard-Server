@@ -28,6 +28,12 @@ export class User {
 
   @Prop({ select: false })
   refreshToken: string;
+
+  @Prop({ default: false })
+  isProfileCompleted: boolean;
+
+  @Prop({ default: 'local' })
+  provider: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
