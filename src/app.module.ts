@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { LoggerModule } from './common/logger/logger.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './modules/auth/auth.module';
@@ -25,6 +26,7 @@ import { databaseConfig } from './config/database.config';
 
     AuthModule,
     UserModule,
+    LoggerModule,
   ],
   controllers: [AppController],
   providers: [AppService],
