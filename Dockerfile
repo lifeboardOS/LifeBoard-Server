@@ -1,17 +1,17 @@
-# Base image
-FROM node:22-alpine AS builder
+# Base image (using full node image for native binaries like bcrypt)
+FROM node:22 AS builder
 
 # Create app directory
 WORKDIR /app
 
-# Enable pnpm
-RUN corepack enable pnpm
+# Install pnpm globally
+RUN npm install -g pnpm
 
 # Copy dependency files
 COPY package.json pnpm-lock.yaml ./
 
 # Install app dependencies
-RUN pnpm install --frozen-lockfile
+RUN pnpm install
 
 # Bundle app source
 COPY . .
@@ -20,21 +20,21 @@ COPY . .
 RUN pnpm run build
 
 # Start a new stage for a smaller production image
-FROM node:22-alpine AS production
+FROM node:22-slim AS production
 
 # Security: Set node environment to production
 ENV NODE_ENV production
 
 WORKDIR /app
 
-# Enable pnpm
-RUN corepack enable pnpm
+# Install pnpm globally
+RUN npm install -g pnpm
 
 # Copy dependency files
 COPY package.json pnpm-lock.yaml ./
 
 # Install only production dependencies
-RUN pnpm install --prod --frozen-lockfile
+RUN pnpm install --prod
 
 # Copy the built application from the builder stage
 COPY --from=builder /app/dist ./dist
@@ -43,4 +43,4 @@ COPY --from=builder /app/dist ./dist
 EXPOSE 8080
 
 # Command to run the application
-CMD [ "node", "dist/main" ]
+CMD [ "node", "dist/main.js" ]
