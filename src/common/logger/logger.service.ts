@@ -1,6 +1,6 @@
 import { ConsoleLogger, Injectable, Scope } from '@nestjs/common';
 
-@Injectable({ scope: Scope.TRANSIENT })
+@Injectable()
 export class LoggerService extends ConsoleLogger {
   // Override methods if needed for custom behavior (e.g. logging to GCP specifically)
   // By default, ConsoleLogger formats things well for GCP when run in Cloud Run.

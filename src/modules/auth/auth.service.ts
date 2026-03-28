@@ -4,6 +4,7 @@ import bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { ConfigService } from '@nestjs/config';
 
 import { UserService } from 'src/modules/user/user.service';
 import { RegisterDto } from './dto/register.dto';
@@ -15,6 +16,8 @@ import { VerifyEmailDto } from './dto/verify-email.dto';
 import { Otp, otpDocument } from './schemas/otp.schema';
 import { ResendOtpDto } from './dto/resend-otp.dto';
 import { LoginAttempt, LoginAttemptDocument } from './schemas/login-attempt.schema';
+import { APP_CONSTANTS } from 'src/constants/app.constants';
+import { ERROR_MESSAGES } from 'src/constants/error-messages.constants';
 
 @Injectable()
 export class AuthService {
@@ -24,6 +27,7 @@ export class AuthService {
         private readonly jwtService: JwtService,
         private readonly otpService: OtpService,
         private readonly emailService: EmailService,
+        private readonly configService: ConfigService,
 
         @InjectModel(Otp.name)
         private readonly otpModel: Model<otpDocument>,
@@ -34,259 +38,250 @@ export class AuthService {
         this.logger.setContext(AuthService.name);
     }
 
-    private handleError(operation: string, error: any) {
-        this.logger.error(`Error during ${operation}: ${error.message}`, error.stack);
-        if (error instanceof HttpException) {
-            throw error;
-        }
-        throw new InternalServerErrorException(`An unexpected error occurred during ${operation}`);
-    }
-
     // Google OAuth
-    async googleLogin(req) {
-        try {
-            if(!req.body){
-                throw new UnauthorizedException();
-            }
-
-            const { email, fullname } = req.user;
-
-            let user = await this.userService.findByEmail(email);
-
-            if(!user){
-                user = await this.userService.createUser({
-                    email: req.user.email,
-                    fullname: req.user.fullname,
-                    username: req.user.email.split('@')[0],
-                    password: "google-oauth",
-                    dateOfBirth: new Date(),
-                });
-
-                user.isEmailVerified = true;
-                user.isProfileCompleted = false;
-                await user.save();
-            }
-
-            const payload = {
-                sub: user._id,
-                email: user.email,
-                username: user.username,
-            };
-
-            const accessToken = await this.jwtService.signAsync(payload);
-
-            return {
-                access_token: accessToken,
-            };
-        } catch (error) {
-            this.handleError('googleLogin', error);
+    async googleLogin(req: any) {
+        if(!req.body){
+            throw new UnauthorizedException(ERROR_MESSAGES.ACCESS_DENIED);
         }
+
+        const { email, fullname } = req.user;
+
+        let user = await this.userService.findByEmail(email);
+
+        if(!user){
+            user = await this.userService.createUser({
+                email: req.user.email,
+                fullname: req.user.fullname,
+                username: req.user.email.split('@')[0],
+                password: "google-oauth",
+                dateOfBirth: new Date(),
+            } as any); // using as any since we skip some validation on oauth
+
+            user.isEmailVerified = true;
+            user.isProfileCompleted = false;
+            await user.save();
+        }
+
+        const payload = {
+            sub: user._id,
+            email: user.email,
+            username: user.username,
+        };
+
+        const accessToken = await this.jwtService.signAsync(payload);
+        this.logger.log(`User logged in via Google: ${email}`);
+
+        return { access_token: accessToken };
     }
 
     // register(signUp) method for User
     async registerUser(registerUserDto: RegisterDto) {
-        try {
-            const existingUserByEmail = await this.userService.findByEmail(registerUserDto.email);
-            if (existingUserByEmail) {
-                throw new ConflictException('Email already exists');
-            }
-
-            const existingUserByUsername = await this.userService.findByUsername(registerUserDto.username);
-            if(existingUserByUsername) {
-                throw new ConflictException('Username already exists');
-            }
-
-            const saltRounds = 10;
-            const hashedPassword = await bcrypt.hash(registerUserDto.password, saltRounds);
-
-            const user = await this.userService.createUser({
-                ...registerUserDto, 
-                password: hashedPassword
-            });
-
-            const otp = await this.otpService.createOtp(user.email);
-
-            await this.emailService.sendOtp(user.email, otp);
-
-            return {
-                message: 'Verification OTP sent to your email'
-            };
-        } catch (error) {
-            this.handleError('registerUser', error);
+        // Checking for existing conflicts
+        const [existingUserByEmail, existingUserByUsername] = await Promise.all([
+            this.userService.findByEmail(registerUserDto.email),
+            this.userService.findByUsername(registerUserDto.username)
+        ]);
+        
+        if (existingUserByEmail) {
+            throw new ConflictException(ERROR_MESSAGES.EMAIL_ALREADY_EXISTS);
         }
+
+        if(existingUserByUsername) {
+            throw new ConflictException(ERROR_MESSAGES.USERNAME_ALREADY_EXISTS);
+        }
+
+        const hashedPassword = await bcrypt.hash(registerUserDto.password, APP_CONSTANTS.SALT_ROUNDS);
+
+        const user = await this.userService.createUser({
+            ...registerUserDto, 
+            password: hashedPassword
+        });
+
+        // Try to send OTP, handle failure from external service explicitly
+        try {
+            const otp = await this.otpService.createOtp(user.email);
+            await this.emailService.sendOtp(user.email, otp);
+            this.logger.log(`User registered successfully and OTP sent: ${user.email}`);
+        } catch (error) {
+            this.logger.error(`Failed to send OTP to ${user.email}`, (error as Error).stack);
+            // Optionally could throw an error or just return, allowing them to resend
+            throw new InternalServerErrorException('Registration succeeded, but failed to send verification email.');
+        }
+
+        return {
+            message: 'Verification OTP sent to your email'
+        };
     }
 
     // email verification
     async verifyEmail(verifyEmailDto: VerifyEmailDto) {
-        try {
-            const { email, otp } = verifyEmailDto;
+        const { email, otp } = verifyEmailDto;
 
-            const otpRecord = await this.otpModel.findOne({ email });
+        const otpRecord = await this.otpModel.findOne({ email });
 
-            if (!otpRecord) {
-                throw new BadRequestException('Invalid OTP');
-            }
-
-            if(otpRecord.attempts >= 5){
-                throw new BadRequestException('Too many OTP attempts. Request a new OTP');
-            }
-
-            if(otpRecord.expiresAt < new Date()){
-                throw new BadRequestException('OTP expired');
-            }
-
-            const isValidOtp = await bcrypt.compare(otp, otpRecord.otp);
-
-            if(!isValidOtp){
-                otpRecord.attempts += 1;
-                await otpRecord.save();
-                throw new BadRequestException('Invalid OTP');
-            }
-
-            const user = await this.userService.findByEmail(email);
-
-            if (!user) {
-                throw new BadRequestException('User not found');
-            }
-
-            user.isEmailVerified = true;
-            await user.save();
-
-            await otpRecord.deleteOne();
-
-            const payload = {
-                sub: user._id,
-                email: user.email,
-                username: user.username,
-            };
-
-            const token = await this.jwtService.signAsync(payload);
-
-            return {
-                message: 'Email verified successfully',
-                access_token: token,
-            };
-        } catch (error) {
-            this.handleError('verifyEmail', error);
+        if (!otpRecord) {
+            throw new BadRequestException(ERROR_MESSAGES.INVALID_OTP);
         }
+
+        if(otpRecord.attempts >= APP_CONSTANTS.OTP_MAX_ATTEMPTS){
+            throw new BadRequestException(ERROR_MESSAGES.TOO_MANY_OTP_ATTEMPTS);
+        }
+
+        if(otpRecord.expiresAt < new Date()){
+            throw new BadRequestException(ERROR_MESSAGES.OTP_EXPIRED);
+        }
+
+        const isValidOtp = await bcrypt.compare(otp, otpRecord.otp);
+
+        if(!isValidOtp){
+            otpRecord.attempts += 1;
+            await otpRecord.save();
+            throw new BadRequestException(ERROR_MESSAGES.INVALID_OTP);
+        }
+
+        const user = await this.userService.findByEmail(email);
+
+        if (!user) {
+            throw new BadRequestException(ERROR_MESSAGES.USER_NOT_FOUND);
+        }
+
+        user.isEmailVerified = true;
+        await user.save();
+        await otpRecord.deleteOne();
+
+        const payload = {
+            sub: user._id,
+            email: user.email,
+            username: user.username,
+        };
+
+        const token = await this.jwtService.signAsync(payload);
+        this.logger.log(`Email verified successfully for: ${email}`);
+
+        return {
+            message: 'Email verified successfully',
+            access_token: token,
+        };
     }
 
     // Resend OTP
     async resendOtp(resendOtpDto: ResendOtpDto){
-        try {
-            const user = await this.userService.findByEmail(resendOtpDto.email);
+        const user = await this.userService.findByEmail(resendOtpDto.email);
 
-            if(!user){
-                throw new BadRequestException('User not found');
-            }
-
-            if(user.isEmailVerified){
-                throw new BadRequestException('Email already verified');
-            }
-
-            const otp = await this.otpService.createOtp(resendOtpDto.email);
-
-            await this.emailService.sendOtp(resendOtpDto.email, otp);
-
-            return {
-                message: 'OTP resent successfully'
-            };
-        } catch (error) {
-            this.handleError('resendOtp', error);
+        if(!user){
+            throw new BadRequestException(ERROR_MESSAGES.USER_NOT_FOUND);
         }
+
+        if(user.isEmailVerified){
+            throw new BadRequestException(ERROR_MESSAGES.EMAIL_ALREADY_VERIFIED);
+        }
+
+        try {
+            const otp = await this.otpService.createOtp(resendOtpDto.email);
+            await this.emailService.sendOtp(resendOtpDto.email, otp);
+            this.logger.log(`OTP resent successfully to: ${resendOtpDto.email}`);
+        } catch (error) {
+            this.logger.error(`Failed to resend OTP to ${resendOtpDto.email}`, (error as Error).stack);
+            throw new InternalServerErrorException('Failed to send verification email.');
+        }
+
+        return { message: 'OTP resent successfully' };
     }
 
     // login method for User
     async login(loginDto: LoginDto){
-        try {
-            const { identifier, password } = loginDto;
-            const normalizedIdentifier = identifier.toLowerCase().trim();
+        const { identifier, password } = loginDto;
+        const normalizedIdentifier = identifier.toLowerCase().trim();
 
-            const user = await this.userService.findForAuth(normalizedIdentifier);
+        const user = await this.userService.findForAuth(normalizedIdentifier);
 
-            if(!user){
-                throw new UnauthorizedException('Invalid credentials');
-            }
-
-            if(!user.isEmailVerified){
-                throw new UnauthorizedException('Please verify your email before logging in');
-            }
-
-            const attempts = await this.loginAttemptModel.countDocuments({ identifier });
-
-            if(attempts >= 5){
-                throw new UnauthorizedException('Too many login attempts. Try again later.')
-            }
-
-            const isPasswordValid = await bcrypt.compare(
-                loginDto.password,
-                user.password,
-            );
-
-            if(!isPasswordValid){
-                await this.loginAttemptModel.create({
-                    identifier,
-                    expiresAt: new Date(Date.now() + 60000)
-                });
-                throw new UnauthorizedException('Invalid credentials');
-            }
-
-            await this.loginAttemptModel.deleteMany({ identifier });
-
-            const payload = {
-                sub: user._id,
-                username: user.username,
-                email: user.email,
-            };
-
-            const accessToken = await this.jwtService.signAsync(payload, {
-                secret: process.env.JWT_ACCESS_SECRET,
-                expiresIn: '15m',
-            });
-
-            const refreshToken = await this.jwtService.signAsync(payload, {
-                secret: process.env.JWT_REFRESH_SECRET,
-                expiresIn: '30d',
-            });
-
-            const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
-
-            user.refreshToken = hashedRefreshToken;
-            await user.save();
-
-            return {
-                access_token: accessToken,
-                refresh_token: refreshToken,
-            };
-        } catch (error) {
-            this.handleError('login', error);
+        if(!user){
+            throw new UnauthorizedException(ERROR_MESSAGES.INVALID_CREDENTIALS);
         }
+
+        if(!user.isEmailVerified){
+            throw new UnauthorizedException(ERROR_MESSAGES.PLEASE_VERIFY_EMAIL);
+        }
+
+        const attempts = await this.loginAttemptModel.countDocuments({ identifier: normalizedIdentifier });
+
+        if(attempts >= APP_CONSTANTS.MAX_LOGIN_ATTEMPTS){
+            throw new UnauthorizedException(ERROR_MESSAGES.TOO_MANY_LOGIN_ATTEMPTS);
+        }
+
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+
+        if(!isPasswordValid){
+            await this.loginAttemptModel.create({
+                identifier: normalizedIdentifier,
+                expiresAt: new Date(Date.now() + APP_CONSTANTS.LOGIN_ATTEMPT_LOCKOUT_MS)
+            });
+            this.logger.warn(`Failed login attempt for: ${normalizedIdentifier}`);
+            throw new UnauthorizedException(ERROR_MESSAGES.INVALID_CREDENTIALS);
+        }
+
+        // cleanup on successful login
+        await this.loginAttemptModel.deleteMany({ identifier: normalizedIdentifier });
+
+        const payload = {
+            sub: user._id,
+            username: user.username,
+            email: user.email,
+        };
+
+        const accessTokenSecret = this.configService.get<string>('jwt.accessSecret')!;
+        const refreshTokenSecret = this.configService.get<string>('jwt.refreshSecret')!;
+
+        const accessToken = await this.jwtService.signAsync(payload, {
+            secret: accessTokenSecret,
+            expiresIn: APP_CONSTANTS.JWT_ACCESS_EXPIRATION_TIME as any,
+        });
+
+        const refreshToken = await this.jwtService.signAsync(payload, {
+            secret: refreshTokenSecret,
+            expiresIn: APP_CONSTANTS.JWT_REFRESH_EXPIRATION_TIME as any,
+        });
+
+        const hashedRefreshToken = await bcrypt.hash(refreshToken, APP_CONSTANTS.SALT_ROUNDS);
+
+        user.refreshToken = hashedRefreshToken;
+        await user.save();
+
+        this.logger.log(`User logged in successfully: ${user.email}`);
+
+        return {
+            access_token: accessToken,
+            refresh_token: refreshToken,
+        };
     }
 
     // Refresh token
     async refreshToken(refreshToken: string){
         try {
+            const refreshTokenSecret = this.configService.get<string>('jwt.refreshSecret')!;
+            const accessTokenSecret = this.configService.get<string>('jwt.accessSecret')!;
+            
             // verify token
             const payload = await this.jwtService.verifyAsync(refreshToken, {
-                secret: process.env.JWT_REFRESH_SECRET,
+                secret: refreshTokenSecret,
             });
 
             // find user
             const user = await this.userService.findById(payload.sub);
 
             if(!user || !user.refreshToken){
-                throw new UnauthorizedException('Access denied');
+                throw new UnauthorizedException(ERROR_MESSAGES.ACCESS_DENIED);
             }
 
             if(!user.isEmailVerified){
-                throw new UnauthorizedException('Email not verified');
+                throw new UnauthorizedException(ERROR_MESSAGES.EMAIL_NOT_VERIFIED);
             }
 
             // compare hashed token
             const isMatch = await bcrypt.compare(refreshToken, user.refreshToken);
 
             if(!isMatch){
-                throw new UnauthorizedException('Invalid refresh token');
+                throw new UnauthorizedException(ERROR_MESSAGES.INVALID_REFRESH_TOKEN);
             }
 
             // Generate new access token
@@ -297,40 +292,37 @@ export class AuthService {
                     username: payload.username,
                 },
                 {
-                    secret: process.env.JWT_ACCESS_SECRET,
-                    expiresIn: '15m',
+                    secret: accessTokenSecret,
+                    expiresIn: APP_CONSTANTS.JWT_ACCESS_EXPIRATION_TIME as any,
                 },
             );
 
-            return {
-                access_token: newAccessToken,
-            };
+            this.logger.log(`Token refreshed successfully for: ${payload.email}`);
+
+            return { access_token: newAccessToken };
         } catch (error) {
+            // Log verification errors explicitly, since jwtService.verifyAsync could throw and we want to return 401
             if (!(error instanceof HttpException)) {
-                this.logger.error(`Error during refreshToken: ${error.message}`, error.stack);
+                this.logger.warn(`Failed token refresh: ${(error as Error).message}`);
             }
-            throw new UnauthorizedException('Invalid refresh token');
+            throw new UnauthorizedException(ERROR_MESSAGES.INVALID_REFRESH_TOKEN);
         }
     }
 
     // Logout
     async logout(logoutDto: { userId: string }) {
-        try {
-            const user = await this.userService.findById(logoutDto.userId);
+        const user = await this.userService.findById(logoutDto.userId);
 
-            if(!user){
-                throw new UnauthorizedException('User not found');
-            }
-
-            // remove refresh token
-            user.refreshToken = " ";
-            await user.save();
-
-            return  {
-                message: 'Logged out successfully',
-            };
-        } catch (error) {
-            this.handleError('logout', error);
+        if(!user){
+            throw new UnauthorizedException(ERROR_MESSAGES.USER_NOT_FOUND);
         }
+
+        // remove refresh token
+        user.refreshToken = " ";
+        await user.save();
+        
+        this.logger.log(`User logged out successfully: ${user.email}`);
+
+        return { message: 'Logged out successfully' };
     }
 }

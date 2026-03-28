@@ -1,0 +1,15 @@
+export const ERROR_MESSAGES = {
+  EMAIL_ALREADY_EXISTS: 'Email already exists',
+  USERNAME_ALREADY_EXISTS: 'Username already exists',
+  INVALID_CREDENTIALS: 'Invalid credentials',
+  USER_NOT_FOUND: 'User not found',
+  INVALID_OTP: 'Invalid OTP',
+  OTP_EXPIRED: 'OTP expired',
+  TOO_MANY_OTP_ATTEMPTS: 'Too many OTP attempts. Request a new OTP',
+  PLEASE_VERIFY_EMAIL: 'Please verify your email before logging in',
+  TOO_MANY_LOGIN_ATTEMPTS: 'Too many login attempts. Try again later.',
+  ACCESS_DENIED: 'Access denied',
+  EMAIL_NOT_VERIFIED: 'Email not verified',
+  INVALID_REFRESH_TOKEN: 'Invalid refresh token',
+  EMAIL_ALREADY_VERIFIED: 'Email already verified',
+};

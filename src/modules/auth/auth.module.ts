@@ -5,6 +5,7 @@ import { UserModule } from 'src/modules/user/user.module';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
+import { LoggerModule } from 'src/common/logger/logger.module';
 
 import { Otp, OtpSchema } from './schemas/otp.schema';
 import { OtpService } from './services/otp.service';
@@ -17,12 +18,13 @@ import { GoogleStrategy } from './strategies/google.strategy';
 
 @Module({
   imports: [
+    LoggerModule,
     ConfigModule,
     UserModule,
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET'),
+        secret: configService.get<string>('jwt.accessSecret'),
         signOptions: { expiresIn: '15m' },
       }),
     }),

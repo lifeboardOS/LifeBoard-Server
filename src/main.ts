@@ -4,13 +4,20 @@ setServers(['1.1.1.1', '8.8.8.8']);
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe, BadRequestException } from '@nestjs/common';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import { LoggerService } from './common/logger/logger.service';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  
+  const loggerService = app.get(LoggerService);
+  app.useGlobalFilters(new AllExceptionsFilter(loggerService));
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
       forbidNonWhitelisted: true,
+      transform: true,
       stopAtFirstError: true,
       exceptionFactory: (errors) => {
         const formattedErrors = errors.map((error) => ({

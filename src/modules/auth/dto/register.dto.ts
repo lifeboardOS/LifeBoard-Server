@@ -1,14 +1,17 @@
 import { IsString, IsEmail, MinLength, MaxLength, Matches, IsNotEmpty, IsDateString } from 'class-validator';
+import { Transform } from 'class-transformer';
 
 export class RegisterDto {
     @IsString({ message: 'fullname must be a string' })
     @MinLength(2, { message: 'fullname must be at least 2 characters long' })
     @MaxLength(50, { message: 'fullname cannot exceed 50 characters' })
     @IsNotEmpty({ message: 'fullname is required' })
+    @Transform(({ value }) => value?.trim())
     fullname: string;
 
     @IsEmail({}, {message: 'invalid email address'})
     @IsNotEmpty({ message: 'email is required' })
+    @Transform(({ value }) => value?.trim().toLowerCase())
     email: string;
 
     @IsString({ message: 'username must be a string' })
@@ -18,6 +21,7 @@ export class RegisterDto {
         message: 'Username can contain only lowercase letters, numbers, and underscores',
     })
     @IsNotEmpty({ message: 'username is required' })
+    @Transform(({ value }) => value?.trim().toLowerCase())
     username: string;
 
     @IsString({ message: 'password must be a string' })
