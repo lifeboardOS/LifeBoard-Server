@@ -6,15 +6,18 @@ import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ResendOtpDto } from './dto/resend-otp.dto';
 import { LogoutDto } from './dto/logout.dto';
 import { AuthGuard } from '@nestjs/passport';
+import { Public } from 'src/common/decorators/public.decorator';
 
 @Controller('auth')
 export class AuthController {
     constructor(private readonly authService: AuthService){}
 
+    @Public()
     @Get('google')
     @UseGuards(AuthGuard('google'))
     googleAuth() {}
 
+    @Public()
     @Get('google/callback')
     @UseGuards(AuthGuard('google'))
     async googleAuthCallback(@Req() req) {

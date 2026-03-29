@@ -40,7 +40,7 @@ export class AuthService {
 
     // Google OAuth
     async googleLogin(req: any) {
-        if(!req.body){
+        if(!req.user){
             throw new UnauthorizedException(ERROR_MESSAGES.ACCESS_DENIED);
         }
 
