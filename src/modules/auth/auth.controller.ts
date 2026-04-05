@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Req, Res, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -22,8 +22,18 @@ export class AuthController {
     @Public()
     @Get('google/callback')
     @UseGuards(AuthGuard('google'))
-    async googleAuthCallback(@Req() req) {
-        return this.authService.googleLogin(req);
+    async googleAuthCallback(@Req() req, @Res() res: any) {
+        const { access_token, refresh_token, isNewUser } = await this.authService.googleLogin(req);
+        const frontendUrl = process.env.FRONTEND_URL || 'https://dev.lifeboardos.com';
+        
+        const redirectUrl = new URL(`${frontendUrl}/auth/callback`);
+        redirectUrl.searchParams.append('access_token', access_token);
+        redirectUrl.searchParams.append('refresh_token', refresh_token);
+        if (isNewUser) {
+            redirectUrl.searchParams.append('new_user', 'true');
+        }
+
+        res.redirect(redirectUrl.toString());
     }
 
     @Post('register')
@@ -56,6 +66,11 @@ export class AuthController {
     @Post('reset-password')
     async resetPassword(@Body() resetPasswordDto: ResetPasswordDto){
         return this.authService.resetPassword(resetPasswordDto);
+    }
+
+    @Post('onboarding')
+    async completeOnboarding(@Req() req, @Body('dateOfBirth') dateOfBirth: Date){
+        return this.authService.completeOnboarding(req.user.sub, dateOfBirth);
     }
 
     @Post('refresh')

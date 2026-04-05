@@ -49,19 +49,24 @@ export class AuthService {
         const { email, fullname } = req.user;
 
         let user = await this.userService.findByEmail(email);
+        let isNewUser = false;
 
         if(!user){
+            // Use fallback password
+            const hashedPassword = await bcrypt.hash("google-oauth", APP_CONSTANTS.SALT_ROUNDS);
             user = await this.userService.createUser({
                 email: req.user.email,
                 fullname: req.user.fullname,
                 username: req.user.email.split('@')[0],
-                password: "google-oauth",
+                password: hashedPassword,
                 dateOfBirth: new Date(),
-            } as any); // using as any since we skip some validation on oauth
+                provider: 'google',
+            } as any);
 
             user.isEmailVerified = true;
             user.isProfileCompleted = false;
             await user.save();
+            isNewUser = true;
         }
 
         const payload = {
@@ -70,10 +75,26 @@ export class AuthService {
             username: user.username,
         };
 
-        const accessToken = await this.jwtService.signAsync(payload);
+        const accessTokenSecret = this.configService.get<string>('jwt.accessSecret') || this.configService.get<string>('JWT_ACCESS_SECRET')!;
+        const refreshTokenSecret = this.configService.get<string>('jwt.refreshSecret') || this.configService.get<string>('JWT_REFRESH_SECRET')!;
+
+        const accessToken = await this.jwtService.signAsync(payload, {
+            secret: accessTokenSecret,
+            expiresIn: APP_CONSTANTS.JWT_ACCESS_EXPIRATION_TIME as any,
+        });
+
+        const refreshToken = await this.jwtService.signAsync(payload, {
+            secret: refreshTokenSecret,
+            expiresIn: APP_CONSTANTS.JWT_REFRESH_EXPIRATION_TIME as any,
+        });
+
+        const hashedRefreshToken = await bcrypt.hash(refreshToken, APP_CONSTANTS.SALT_ROUNDS);
+        user.refreshToken = hashedRefreshToken;
+        await user.save();
+
         this.logger.log(`User logged in via Google: ${email}`);
 
-        return { access_token: accessToken };
+        return { access_token: accessToken, refresh_token: refreshToken, isNewUser };
     }
 
     // register(signUp) method for User
@@ -361,6 +382,22 @@ export class AuthService {
         this.logger.log(`Password reset successfully for: ${email}`);
 
         return { message: 'Password reset successfully' };
+    }
+
+    // Complete Onboarding
+    async completeOnboarding(userId: string, dateOfBirth: Date) {
+        const user = await this.userService.findById(userId);
+
+        if (!user) {
+            throw new UnauthorizedException(ERROR_MESSAGES.USER_NOT_FOUND);
+        }
+
+        user.dateOfBirth = dateOfBirth;
+        user.isProfileCompleted = true;
+        await user.save();
+
+        this.logger.log(`User completed onboarding: ${user.email}`);
+        return { message: 'Profile completed successfully', user: { email: user.email, isProfileCompleted: user.isProfileCompleted } };
     }
 
     // Logout
