@@ -1,7 +1,8 @@
 import { IsString, IsEmail, MinLength, MaxLength, Matches, IsNotEmpty, IsDateString } from 'class-validator';
 import { Transform } from 'class-transformer';
+import type { RegisterRequest } from '@shared/auth.interfaces';
 
-export class RegisterDto {
+export class RegisterDto implements RegisterRequest {
     @IsString({ message: 'fullname must be a string' })
     @MinLength(2, { message: 'fullname must be at least 2 characters long' })
     @MaxLength(50, { message: 'fullname cannot exceed 50 characters' })

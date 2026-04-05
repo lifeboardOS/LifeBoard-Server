@@ -1,7 +1,8 @@
 import { IsNotEmpty, IsString } from 'class-validator';
 import { Transform } from 'class-transformer';
+import type { LoginRequest } from '@shared/auth.interfaces';
 
-export class LoginDto {
+export class LoginDto implements LoginRequest {
   
   @IsString({ message: 'username or email must be a string' })
   @IsNotEmpty({ message: 'username or email is required' })

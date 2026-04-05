@@ -9,6 +9,8 @@ import { ConfigService } from '@nestjs/config';
 import { UserService } from 'src/modules/user/user.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 import { OtpService } from './services/otp.service';
 import { EmailService } from './services/email.service';
@@ -307,6 +309,58 @@ export class AuthService {
             }
             throw new UnauthorizedException(ERROR_MESSAGES.INVALID_REFRESH_TOKEN);
         }
+    }
+
+    // Forgot Password
+    async forgotPassword(forgotPasswordDto: ForgotPasswordDto) {
+        const user = await this.userService.findByEmail(forgotPasswordDto.email);
+
+        if (!user) {
+            throw new BadRequestException(ERROR_MESSAGES.USER_NOT_FOUND);
+        }
+
+        try {
+            const otp = await this.otpService.createOtp(user.email);
+            await this.emailService.sendOtp(user.email, otp);
+            this.logger.log(`Forgot password OTP sent to: ${user.email}`);
+        } catch (error) {
+            this.logger.error(`Failed to send forgot password OTP to ${user.email}`, (error as Error).stack);
+            throw new InternalServerErrorException('Failed to send verification email.');
+        }
+
+        return { message: 'Reset code sent to your email' };
+    }
+
+    // Reset Password
+    async resetPassword(resetPasswordDto: ResetPasswordDto) {
+        const { email, otp, password } = resetPasswordDto;
+
+        const otpRecord = await this.otpModel.findOne({ email });
+
+        if (!otpRecord) {
+            throw new BadRequestException(ERROR_MESSAGES.INVALID_OTP);
+        }
+
+        const isValidOtp = await bcrypt.compare(otp, otpRecord.otp);
+
+        if (!isValidOtp) {
+            throw new BadRequestException(ERROR_MESSAGES.INVALID_OTP);
+        }
+
+        const user = await this.userService.findByEmail(email);
+
+        if (!user) {
+            throw new BadRequestException(ERROR_MESSAGES.USER_NOT_FOUND);
+        }
+
+        const hashedPassword = await bcrypt.hash(password, APP_CONSTANTS.SALT_ROUNDS);
+        user.password = hashedPassword;
+        await user.save();
+        await otpRecord.deleteOne();
+
+        this.logger.log(`Password reset successfully for: ${email}`);
+
+        return { message: 'Password reset successfully' };
     }
 
     // Logout

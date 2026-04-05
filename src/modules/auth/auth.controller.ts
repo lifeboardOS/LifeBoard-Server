@@ -4,6 +4,8 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ResendOtpDto } from './dto/resend-otp.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { LogoutDto } from './dto/logout.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { Public } from 'src/common/decorators/public.decorator';
@@ -42,6 +44,18 @@ export class AuthController {
     @Post('resend-otp')
     async resendOtp(@Body() resendOtpDto: ResendOtpDto){
         return this.authService.resendOtp(resendOtpDto);
+    }
+
+    @Public()
+    @Post('forgot-password')
+    async forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto){
+        return this.authService.forgotPassword(forgotPasswordDto);
+    }
+
+    @Public()
+    @Post('reset-password')
+    async resetPassword(@Body() resetPasswordDto: ResetPasswordDto){
+        return this.authService.resetPassword(resetPasswordDto);
     }
 
     @Post('refresh')

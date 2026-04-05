@@ -12,6 +12,9 @@ async function bootstrap() {
   
   const loggerService = app.get(LoggerService);
   app.useGlobalFilters(new AllExceptionsFilter(loggerService));
+  
+  app.enableCors();
+  app.setGlobalPrefix('api');
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -33,6 +36,6 @@ async function bootstrap() {
     }),
   );
 
-  await app.listen(process.env.PORT ?? 8080, '0.0.0.0');
+  await app.listen(process.env.PORT ?? 3000, '0.0.0.0');
 }
 bootstrap();
