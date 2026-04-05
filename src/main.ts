@@ -13,7 +13,14 @@ async function bootstrap() {
   const loggerService = app.get(LoggerService);
   app.useGlobalFilters(new AllExceptionsFilter(loggerService));
   
-  app.enableCors();
+  app.enableCors({
+    origin: [
+      'http://localhost:4200',
+      'http://localhost:50624',
+      'https://dev.lifeboardos.com',
+    ],
+    credentials: true,
+  });
   app.setGlobalPrefix('api');
 
   app.useGlobalPipes(
