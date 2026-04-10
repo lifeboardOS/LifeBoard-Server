@@ -64,9 +64,8 @@ export class AuthService {
             } as any);
 
             user.isEmailVerified = true;
-            user.isProfileCompleted = false;
+            user.isProfileCompleted = true;
             await user.save();
-            isNewUser = true;
         }
 
         const payload = {
