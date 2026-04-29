@@ -4,6 +4,9 @@ export interface User {
   username: string;
   name: string;
   avatar?: string;
+  profilePicture?: string;
+  googleId?: string;
+  provider?: string;
   dob?: string;
   isEmailVerified: boolean;
   isProfileCompleted: boolean;

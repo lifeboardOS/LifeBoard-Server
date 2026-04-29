@@ -34,6 +34,12 @@ export class User {
 
   @Prop({ default: 'local' })
   provider: string;
+
+  @Prop({ required: false })
+  profilePicture?: string;
+
+  @Prop({ required: false, sparse: true, index: true })
+  googleId?: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

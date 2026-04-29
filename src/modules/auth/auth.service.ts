@@ -46,26 +46,66 @@ export class AuthService {
             throw new UnauthorizedException(ERROR_MESSAGES.ACCESS_DENIED);
         }
 
-        const { email, fullname } = req.user;
+        const { email, fullname, profilePicture, googleId } = req.user;
 
         let user = await this.userService.findByEmail(email);
         let isNewUser = false;
 
         if(!user){
-            // Use fallback password
-            const hashedPassword = await bcrypt.hash("google-oauth", APP_CONSTANTS.SALT_ROUNDS);
+            isNewUser = true;
+
+            // Generate a unique username from email prefix
+            const baseUsername = email.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '_');
+            let username = baseUsername;
+            let suffix = 0;
+
+            // Handle username collisions by appending random digits
+            while (await this.userService.findByUsername(username)) {
+                suffix++;
+                const randomDigits = Math.floor(Math.random() * 900 + 100); // 3-digit random number
+                username = `${baseUsername}_${randomDigits}`;
+            }
+
+            // Placeholder password for Google OAuth users (they can't login with password)
+            const hashedPassword = await bcrypt.hash(`google-oauth-${googleId}-${Date.now()}`, APP_CONSTANTS.SALT_ROUNDS);
+
             user = await this.userService.createUser({
-                email: req.user.email,
-                fullname: req.user.fullname,
-                username: req.user.email.split('@')[0],
+                email,
+                fullname,
+                username,
                 password: hashedPassword,
-                dateOfBirth: new Date(),
-                provider: 'google',
+                dateOfBirth: undefined as any, // Will be collected during onboarding
             } as any);
 
-            user.isEmailVerified = true;
-            user.isProfileCompleted = true;
+            // Set Google-specific fields
+            user.profilePicture = profilePicture || '';
+            user.googleId = googleId;
+            user.provider = 'google';
+            user.isEmailVerified = true; // Google emails are pre-verified
+            user.isProfileCompleted = false; // Needs onboarding to collect DOB
             await user.save();
+
+            this.logger.log(`New Google user created: ${email} (username: ${username})`);
+        } else {
+            // Existing user — update Google-specific details if they've changed
+            let needsSave = false;
+
+            if (profilePicture && user.profilePicture !== profilePicture) {
+                user.profilePicture = profilePicture;
+                needsSave = true;
+            }
+            if (googleId && !user.googleId) {
+                user.googleId = googleId;
+                needsSave = true;
+            }
+            if (user.provider === 'local') {
+                user.provider = 'google';
+                needsSave = true;
+            }
+
+            if (needsSave) {
+                await user.save();
+            }
         }
 
         const payload = {

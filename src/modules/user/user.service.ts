@@ -36,17 +36,28 @@ export class UserService {
     async findById(id: string){
         return this.userModel.findById(id).select('+refreshToken');
     }
+
+    async findByIdPublic(id: string){
+        return this.userModel.findById(id).exec();
+    }
     
     async createUser(registerUserDto: RegisterDto) {
         try{
             this.logger.log(`Creating new user: ${registerUserDto.email}`);
-            return await this.userModel.create({
+
+            const userData: Record<string, any> = {
                 fullName: registerUserDto.fullname,
                 username: registerUserDto.username,
                 email: registerUserDto.email,
                 password: registerUserDto.password,
-                dateOfBirth: registerUserDto.dateOfBirth,
-            });
+            };
+
+            // Only set dateOfBirth if provided (Google OAuth users may not have it yet)
+            if (registerUserDto.dateOfBirth) {
+                userData.dateOfBirth = registerUserDto.dateOfBirth;
+            }
+
+            return await this.userModel.create(userData);
         } catch (err: unknown) {
             const e = err as {code?: number};
 
