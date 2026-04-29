@@ -16,6 +16,8 @@ export class UserController {
         return {
             id: user._id,
             fullName: user.fullName,
+            firstName: user.firstName || '',
+            lastName: user.lastName || '',
             email: user.email,
             username: user.username,
             profilePicture: user.profilePicture || '',
@@ -25,6 +27,7 @@ export class UserController {
             isEmailVerified: user.isEmailVerified,
             isProfileCompleted: user.isProfileCompleted,
             role: user.role,
+            locale: user.locale || '',
         };
     }
 }

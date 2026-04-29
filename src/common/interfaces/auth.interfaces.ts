@@ -3,6 +3,8 @@ export interface User {
   email: string;
   username: string;
   name: string;
+  firstName?: string;
+  lastName?: string;
   avatar?: string;
   profilePicture?: string;
   googleId?: string;
@@ -10,6 +12,7 @@ export interface User {
   dob?: string;
   isEmailVerified: boolean;
   isProfileCompleted: boolean;
+  locale?: string;
 }
 
 export interface AuthResponse {

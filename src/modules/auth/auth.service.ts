@@ -46,7 +46,7 @@ export class AuthService {
             throw new UnauthorizedException(ERROR_MESSAGES.ACCESS_DENIED);
         }
 
-        const { email, fullname, profilePicture, googleId } = req.user;
+        const { email, fullname, firstName, lastName, profilePicture, googleId, emailVerified, locale } = req.user;
 
         let user = await this.userService.findByEmail(email);
         let isNewUser = false;
@@ -78,11 +78,14 @@ export class AuthService {
             } as any);
 
             // Set Google-specific fields
+            user.firstName = firstName || '';
+            user.lastName = lastName || '';
             user.profilePicture = profilePicture || '';
             user.googleId = googleId;
             user.provider = 'google';
-            user.isEmailVerified = true; // Google emails are pre-verified
+            user.isEmailVerified = emailVerified ?? true; // Google emails are typically pre-verified
             user.isProfileCompleted = false; // Needs onboarding to collect DOB
+            user.locale = locale || '';
             await user.save();
 
             this.logger.log(`New Google user created: ${email} (username: ${username})`);
@@ -100,6 +103,20 @@ export class AuthService {
             }
             if (user.provider === 'local') {
                 user.provider = 'google';
+                needsSave = true;
+            }
+            // Sync firstName/lastName if not already set
+            if (firstName && !user.firstName) {
+                user.firstName = firstName;
+                needsSave = true;
+            }
+            if (lastName && !user.lastName) {
+                user.lastName = lastName;
+                needsSave = true;
+            }
+            // Update locale if changed
+            if (locale && user.locale !== locale) {
+                user.locale = locale;
                 needsSave = true;
             }
 

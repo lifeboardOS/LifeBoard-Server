@@ -8,6 +8,12 @@ export class User {
   @Prop({ required: true })
   fullName: string;
 
+  @Prop({ required: false })
+  firstName?: string;
+
+  @Prop({ required: false })
+  lastName?: string;
+
   @Prop({ required: true, unique: true, index: true })
   email: string;
 
@@ -40,6 +46,9 @@ export class User {
 
   @Prop({ required: false, sparse: true, index: true })
   googleId?: string;
+
+  @Prop({ required: false })
+  locale?: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

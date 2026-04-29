@@ -27,14 +27,19 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     ): Promise<any> {
 
         const name = profile.name;
-        const emails = profile.emails as { value: string }[];
+        const emails = profile.emails as { value: string; verified?: boolean }[];
         const photos = profile.photos as { value: string }[] | undefined;
+        const rawJson = profile._json as Record<string, any>;
 
         const user = {
             googleId: profile.id,
             email: emails[0]?.value || '',
-            fullname: `${name?.givenName || ''} ${name?.familyName || ''}`.trim(),
+            fullname: profile.displayName || `${name?.givenName || ''} ${name?.familyName || ''}`.trim(),
+            firstName: name?.givenName || '',
+            lastName: name?.familyName || '',
             profilePicture: photos?.[0]?.value || '',
+            emailVerified: rawJson?.email_verified ?? emails[0]?.verified ?? true,
+            locale: rawJson?.locale || '',
         };
 
         return user;
