@@ -25,7 +25,7 @@ export class AuthController {
     async googleAuthCallback(@Req() req, @Res() res: any) {
         const { access_token, refresh_token, isNewUser } = await this.authService.googleLogin(req);
         const frontendUrl = process.env.FRONTEND_URL || 'https://dev.lifeboardos.com';
-        
+
         const redirectUrl = new URL(`${frontendUrl}/auth/callback`);
         redirectUrl.searchParams.append('access_token', access_token);
         redirectUrl.searchParams.append('refresh_token', refresh_token);
@@ -36,51 +36,56 @@ export class AuthController {
         res.redirect(redirectUrl.toString());
     }
 
+    @Public()
     @Post('register')
     async register(@Body() registerUserDto: RegisterDto) {
-        return this.authService.registerUser(registerUserDto); 
+        return this.authService.registerUser(registerUserDto);
     }
 
+    @Public()
     @Post('login')
-    async login(@Body() loginDto: LoginDto){
-        return this.authService.login(loginDto)
+    async login(@Body() loginDto: LoginDto) {
+        return this.authService.login(loginDto);
     }
 
+    @Public()
     @Post('verify-email')
-    async verifyEmail(@Body() verifyEmailDto: VerifyEmailDto){
+    async verifyEmail(@Body() verifyEmailDto: VerifyEmailDto) {
         return this.authService.verifyEmail(verifyEmailDto);
     }
 
+    @Public()
     @Post('resend-otp')
-    async resendOtp(@Body() resendOtpDto: ResendOtpDto){
+    async resendOtp(@Body() resendOtpDto: ResendOtpDto) {
         return this.authService.resendOtp(resendOtpDto);
     }
 
     @Public()
     @Post('forgot-password')
-    async forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto){
+    async forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
         return this.authService.forgotPassword(forgotPasswordDto);
     }
 
     @Public()
     @Post('reset-password')
-    async resetPassword(@Body() resetPasswordDto: ResetPasswordDto){
+    async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
         return this.authService.resetPassword(resetPasswordDto);
     }
 
+    // Requires JWT — req.user is the full Mongoose user document from JwtStrategy
     @Post('onboarding')
-    async completeOnboarding(@Req() req, @Body('dateOfBirth') dateOfBirth: Date){
-        return this.authService.completeOnboarding(req.user.sub, dateOfBirth);
+    async completeOnboarding(@Req() req, @Body('dateOfBirth') dateOfBirth: Date) {
+        return this.authService.completeOnboarding(req.user._id, dateOfBirth);
     }
 
+    @Public()
     @Post('refresh')
-    async refresh(@Body('refreshToken') refreshToken: string){
+    async refresh(@Body('refreshToken') refreshToken: string) {
         return this.authService.refreshToken(refreshToken);
     }
 
     @Post('logout')
-    async logout(@Body() logoutDto: LogoutDto){
+    async logout(@Body() logoutDto: LogoutDto) {
         return this.authService.logout(logoutDto);
     }
-    
 }

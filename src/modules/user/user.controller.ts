@@ -1,13 +1,11 @@
 import { Controller, Get, Req, NotFoundException } from '@nestjs/common';
-import { UserService } from './user.service';
 
 @Controller('user')
 export class UserController {
-    constructor(private readonly userService: UserService) {}
 
     @Get('me')
     async getMe(@Req() req: any) {
-        const user = await this.userService.findByIdPublic(req.user._id);
+        const user = req.user;
 
         if (!user) {
             throw new NotFoundException('User not found');
